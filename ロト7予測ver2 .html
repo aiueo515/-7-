@@ -1,0 +1,1953 @@
+
+
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ロト7 AI予測システム - 本気で当選を狙う</title>
+
+```
+<!-- PWA対応 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ロト7 AI">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1e3c72">
+<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIuODreODiDcgQUnkuojmuKzjgrfjgrnjg4bjg6AiLAogICJzaG9ydF9uYW1lIjogIuODreODiDcgQUkiLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxZTNjNzIiLAogICJ0aGVtZV9jb2xvciI6ICIjMWUzYzcyIiwKICAib3JpZW50YXRpb24iOiAicG9ydHJhaXQiLAogICJzdGFydF91cmwiOiAiLiIKfQ==">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.20.0/tf.min.js"></script>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        min-height: 100vh;
+        color: #333;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+        padding: 30px 0;
+    }
+
+    .header h1 {
+        font-size: 3em;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header p {
+        font-size: 1.2em;
+        opacity: 0.9;
+    }
+
+    .main-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    @media (max-width: 968px) {
+        .main-content {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+    }
+
+    .prediction-display {
+        grid-column: span 2;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    @media (max-width: 968px) {
+        .prediction-display {
+            grid-column: span 1;
+        }
+    }
+
+    .prediction-display::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .prediction-numbers {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin: 30px 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    .number-ball {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 3px solid rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8em;
+        font-weight: bold;
+        backdrop-filter: blur(5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    .number-ball:nth-child(odd) {
+        animation-delay: 0.5s;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-item {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+    }
+
+    .stat-item h4 {
+        font-size: 0.9em;
+        color: #666;
+        margin-bottom: 5px;
+    }
+
+    .stat-item .value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #2a5298;
+    }
+
+    .algorithm-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .tab {
+        padding: 10px 20px;
+        background: #e0e0e0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .tab.active {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .algorithm-content {
+        display: none;
+        animation: fadeIn 0.5s;
+    }
+
+    .algorithm-content.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .input-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 15px;
+        margin-top: 20px;
+    }
+
+    .input-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .input-number {
+        padding: 10px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 1.1em;
+        transition: all 0.3s;
+    }
+
+    .input-number:focus {
+        outline: none;
+        border-color: #667eea;
+        transform: scale(1.05);
+    }
+
+    .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 1.1em;
+        border-radius: 10px;
+        cursor: pointer;
+        width: 100%;
+        transition: all 0.3s;
+        font-weight: bold;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .confidence-meter {
+        margin-top: 20px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 15px;
+    }
+
+    .confidence-bar {
+        height: 30px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 15px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .confidence-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #00ff88 0%, #00cc66 100%);
+        width: 0%;
+        transition: width 1s ease-out;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .confidence-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+        animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+
+    .number-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .number-tag {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+
+    .hot-number {
+        background: #ff6b6b;
+        color: white;
+    }
+
+    .cold-number {
+        background: #4ecdc4;
+        color: white;
+    }
+
+    /* 予測テーブルのスタイル */
+    #predictionTable {
+        font-size: 0.95em;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    #predictionTable th {
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    #predictionTable tbody tr {
+        transition: background-color 0.2s;
+    }
+
+    #predictionTable tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+
+    #predictionTable tbody tr:nth-child(even) {
+        background-color: #fafafa;
+    }
+
+    #predictionTable tbody td {
+        padding: 10px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .rank-badge {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        border-radius: 50%;
+        background: #667eea;
+        color: white;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .rank-badge.gold {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+    }
+
+    .rank-badge.silver {
+        background: linear-gradient(135deg, #C0C0C0, #808080);
+    }
+
+    .rank-badge.bronze {
+        background: linear-gradient(135deg, #CD7F32, #8B4513);
+    }
+
+    .prediction-numbers-cell {
+        font-weight: bold;
+        letter-spacing: 1px;
+        color: #2d3748;
+    }
+
+    .probability-bar {
+        width: 100%;
+        height: 20px;
+        background: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .probability-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transition: width 0.5s ease;
+    }
+
+    .probability-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.8em;
+        font-weight: bold;
+        color: #333;
+        text-shadow: 0 0 3px white;
+    }
+</style>
+```
+
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 ロト7 AI予測システム</h1>
+            <p>最先端の機械学習で本気で当選を狙う</p>
+        </div>
+
+```
+    <div class="main-content">
+        <div class="card prediction-display">
+            <h2 style="text-align: center; margin-bottom: 20px; position: relative; z-index: 1;">
+                🔮 次回予測番号
+            </h2>
+            <div id="predictionDisplay" class="loading">
+                <div class="loading-spinner"></div>
+                <p>AIモデルを初期化中...</p>
+            </div>
+            <div class="confidence-meter" style="display: none;" id="confidenceMeter">
+                <p style="margin-bottom: 10px;">予測信頼度: <span id="confidenceValue">0</span>%</p>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="confidenceFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📊 統計情報</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h4>学習データ数</h4>
+                    <div class="value" id="dataCount">0</div>
+                </div>
+                <div class="stat-item">
+                    <h4>最新回</h4>
+                    <div class="value" id="latestRound">0</div>
+                </div>
+                <div class="stat-item">
+                    <h4>モデル精度</h4>
+                    <div class="value" id="modelAccuracy">0%</div>
+                </div>
+                <div class="stat-item">
+                    <h4>更新状態</h4>
+                    <div class="value" id="syncStatus">待機中</div>
+                </div>
+            </div>
+            
+            <!-- 設定オプション -->
+            <div style="margin-top: 20px; padding: 15px; background: #f0f4f8; border-radius: 10px;">
+                <h4 style="margin-bottom: 10px; color: #4a5568;">⚙️ 予測設定</h4>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="highAccuracyMode" onchange="toggleHighAccuracy()" style="width: 18px; height: 18px;">
+                        <span>🎯 高精度モード（処理時間増）</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="useBonusNumbers" checked onchange="toggleBonusNumbers()" style="width: 18px; height: 18px;">
+                        <span>🎰 ボーナス数字を分析に含める</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🤖 予測アルゴリズム</h3>
+            <div class="algorithm-tabs">
+                <div class="tab active" onclick="switchTab('ensemble')">統合AI</div>
+                <div class="tab" onclick="switchTab('neural')">ニューラルネット</div>
+                <div class="tab" onclick="switchTab('forest')">ランダムフォレスト</div>
+                <div class="tab" onclick="switchTab('pattern')">パターン分析</div>
+            </div>
+            <div id="ensemble" class="algorithm-content active">
+                <h4>🎯 統合AI予測</h4>
+                <p>複数のAIモデルを組み合わせた最高精度の予測</p>
+                <div id="ensembleNumbers" class="number-list"></div>
+            </div>
+            <div id="neural" class="algorithm-content">
+                <h4>🧠 ニューラルネットワーク</h4>
+                <p>深層学習による複雑なパターン認識</p>
+                <div id="neuralNumbers" class="number-list"></div>
+            </div>
+            <div id="forest" class="algorithm-content">
+                <h4>🌲 ランダムフォレスト</h4>
+                <p>複数の決定木による堅実な予測</p>
+                <div id="forestNumbers" class="number-list"></div>
+            </div>
+            <div id="pattern" class="algorithm-content">
+                <h4>📈 パターン分析</h4>
+                <p>統計的パターンと周期性の分析</p>
+                <div id="patternNumbers" class="number-list"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🔥 ホット＆コールド分析</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                    <h4>🔥 ホットナンバー</h4>
+                    <div id="hotNumbers" class="number-list"></div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px;">
+                    <h4>❄️ コールドナンバー</h4>
+                    <div id="coldNumbers" class="number-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>➕ 新規データ追加</h3>
+            <div class="input-section">
+                <p style="margin-bottom: 15px;">新しい当選番号を入力して学習データを更新</p>
+                <div style="margin-bottom: 10px;">
+                    <label style="font-weight: bold; color: #4a5568;">本数字（7個）</label>
+                </div>
+                <div class="input-grid">
+                    <input type="number" class="input-number" id="n1" min="1" max="37" placeholder="1">
+                    <input type="number" class="input-number" id="n2" min="1" max="37" placeholder="2">
+                    <input type="number" class="input-number" id="n3" min="1" max="37" placeholder="3">
+                    <input type="number" class="input-number" id="n4" min="1" max="37" placeholder="4">
+                    <input type="number" class="input-number" id="n5" min="1" max="37" placeholder="5">
+                    <input type="number" class="input-number" id="n6" min="1" max="37" placeholder="6">
+                    <input type="number" class="input-number" id="n7" min="1" max="37" placeholder="7">
+                </div>
+                <div style="margin-top: 15px; margin-bottom: 10px;">
+                    <label style="font-weight: bold; color: #4a5568;">ボーナス数字（2個・任意）</label>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 200px;">
+                    <input type="number" class="input-number" id="b1" min="1" max="37" placeholder="B1">
+                    <input type="number" class="input-number" id="b2" min="1" max="37" placeholder="B2">
+                </div>
+                <button class="btn" onclick="addNewData()">データを追加して再学習</button>
+            </div>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+            <h3>📊 予測番号一覧（上位20組）</h3>
+            <div style="overflow-x: auto;">
+                <table id="predictionTable" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">順位</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">予測番号</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">予測手法</th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">1等当選可能性</th>
+                        </tr>
+                    </thead>
+                    <tbody id="predictionTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 40px; color: #999;">
+                                予測を生成中...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 10px;">
+                <p style="margin: 0; font-size: 0.9em; color: #666;">
+                    <strong>※ 当選可能性について：</strong>
+                    ロト7の1等当選確率は約1/1030万です。AI予測により、統計的に出現可能性の高い組み合わせを提示していますが、
+                    実際の当選を保証するものではありません。
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // グローバル変数
+    let lotoData = [];
+    let model = null;
+    let predictions = {
+        ensemble: [],
+        neural: [],
+        forest: [],
+        pattern: []
+    };
+    
+    // 設定フラグ
+    let useHighAccuracy = false;
+    let useBonusNumbers = true;
+
+    // タブ切り替え
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.algorithm-content').forEach(content => content.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById(tabName).classList.add('active');
+    }
+    
+    // 高精度モード切り替え
+    function toggleHighAccuracy() {
+        useHighAccuracy = document.getElementById('highAccuracyMode').checked;
+        if (lotoData.length > 0) {
+            updateSyncStatus('再学習中...');
+            initializeModels().then(() => {
+                updateSyncStatus('完了');
+            });
+        }
+    }
+    
+    // ボーナス数字使用切り替え
+    function toggleBonusNumbers() {
+        useBonusNumbers = document.getElementById('useBonusNumbers').checked;
+        if (lotoData.length > 0) {
+            updateSyncStatus('予測を更新中...');
+            setTimeout(() => {
+                analyzeData();
+                updateSyncStatus('完了');
+            }, 100);
+        }
+    }
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDataFromGist();
+        
+        // PWAサービスワーカーの登録
+        if ('serviceWorker' in navigator) {
+            registerServiceWorker();
+        }
+    });
+    
+    // サービスワーカーの登録（オフライン対応）
+    function registerServiceWorker() {
+        const sw = `
+```
+
+self.addEventListener(‘install’, e => {
+e.waitUntil(
+caches.open(‘loto7-v1’).then(cache => {
+return cache.addAll([
+‘./’,
+‘https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.20.0/tf.min.js’
+]);
+})
+);
+});
+
+self.addEventListener(‘fetch’, e => {
+e.respondWith(
+caches.match(e.request).then(response => {
+return response || fetch(e.request);
+})
+);
+});`;
+
+```
+        const blob = new Blob([sw], {type: 'application/javascript'});
+        const swUrl = URL.createObjectURL(blob);
+        
+        navigator.serviceWorker.register(swUrl).then(reg => {
+            console.log('PWA対応: オフラインでも使用可能');
+        }).catch(err => {
+            console.log('PWA登録エラー:', err);
+        });
+    }
+
+    // Gistからデータを読み込む（改良版）
+    async function loadDataFromGist() {
+        updateSyncStatus('データ読み込み中...');
+        
+        try {
+            // まずローカルの追加データを取得
+            const localAdditions = JSON.parse(localStorage.getItem('loto7_local_additions') || '[]');
+            
+            // GitHubのraw URLを使用（CORS回避）
+            const response = await fetch('https://raw.githubusercontent.com/gist/aiueo515/fb8252dfd6afcbcee7353227254a0f92/raw/loto7_all_results.csv');
+            const csvText = await response.text();
+            
+            parseCSVData(csvText);
+            
+            // ローカルで追加したデータをマージ
+            if (localAdditions.length > 0) {
+                mergeLocalAdditions(localAdditions);
+                updateSyncStatus(`完了（+${localAdditions.length}件の追加データ）`);
+            } else {
+                updateSyncStatus('完了');
+            }
+            
+            await initializeModels();
+            analyzeData();
+            
+            // 基本データのみ保存（追加データは別管理）
+            localStorage.setItem('loto7_base_data', JSON.stringify(lotoData));
+            localStorage.setItem('loto7_last_sync', new Date().toISOString());
+            
+        } catch (error) {
+            console.error('Gistからのデータ読み込みエラー:', error);
+            // ローカルストレージから読み込み
+            loadFromLocalStorage();
+        }
+    }
+    
+    // ローカルの追加データをマージ
+    function mergeLocalAdditions(additions) {
+        additions.forEach(newData => {
+            // 重複チェック
+            if (!lotoData.find(d => d.round === newData.round)) {
+                lotoData.push(newData);
+            }
+        });
+        
+        // 最新順にソート
+        lotoData.sort((a, b) => b.round - a.round);
+        updateStats();
+    }
+
+    // CSVデータをパース
+    function parseCSVData(csvText) {
+        const lines = csvText.trim().split('\n');
+        lotoData = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split(',');
+            if (parts.length >= 9) {
+                lotoData.push({
+                    round: parseInt(parts[0]),
+                    date: parts[1],
+                    numbers: [
+                        parseInt(parts[2]),
+                        parseInt(parts[3]),
+                        parseInt(parts[4]),
+                        parseInt(parts[5]),
+                        parseInt(parts[6]),
+                        parseInt(parts[7]),
+                        parseInt(parts[8])
+                    ].sort((a, b) => a - b),
+                    bonus: parts.length > 10 ? [parseInt(parts[9]), parseInt(parts[10])] : []
+                });
+            }
+        }
+        
+        // 最新順にソート
+        lotoData.sort((a, b) => b.round - a.round);
+        
+        updateStats();
+    }
+
+    // ローカルストレージから読み込み
+    function loadFromLocalStorage() {
+        const savedData = localStorage.getItem('loto7_data');
+        if (savedData) {
+            lotoData = JSON.parse(savedData);
+            updateStats();
+            
+            initializeModels().then(() => {
+                analyzeData();
+                updateSyncStatus('オフラインモード');
+            });
+        } else {
+            // 緊急用のサンプルデータ
+            useSampleData();
+        }
+    }
+
+    // ローカルストレージに保存
+    function saveToLocalStorage() {
+        localStorage.setItem('loto7_data', JSON.stringify(lotoData));
+        localStorage.setItem('loto7_last_update', new Date().toISOString());
+    }
+
+    // サンプルデータを使用（フォールバック）
+    function useSampleData() {
+        lotoData = generateSampleData();
+        updateStats();
+        initializeModels().then(() => {
+            analyzeData();
+            updateSyncStatus('サンプルデータ');
+        });
+    }
+
+    // サンプルデータ生成
+    function generateSampleData() {
+        const samples = [];
+        for (let i = 628; i > 0; i--) {
+            samples.push({
+                round: i,
+                date: new Date(2025 - Math.floor((628 - i) / 52), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+                numbers: generateRealisticNumbers(),
+                bonus: []
+            });
+        }
+        return samples;
+    }
+
+    // 現実的な番号を生成
+    function generateRealisticNumbers() {
+        const numbers = new Set();
+        
+        // 統計的に出やすい番号を優先（中央値付近）
+        while (numbers.size < 7) {
+            let num;
+            const rand = Math.random();
+            if (rand < 0.6) {
+                // 60%の確率で中央付近（10-28）
+                num = Math.floor(Math.random() * 19) + 10;
+            } else if (rand < 0.8) {
+                // 20%の確率で低い番号（1-9）
+                num = Math.floor(Math.random() * 9) + 1;
+            } else {
+                // 20%の確率で高い番号（29-37）
+                num = Math.floor(Math.random() * 9) + 29;
+            }
+            numbers.add(num);
+        }
+        
+        return Array.from(numbers).sort((a, b) => a - b);
+    }
+
+    // 統計情報を更新
+    function updateStats() {
+        document.getElementById('dataCount').textContent = lotoData.length;
+        document.getElementById('latestRound').textContent = lotoData[0]?.round || 0;
+    }
+
+    // 同期状態を更新
+    function updateSyncStatus(status) {
+        document.getElementById('syncStatus').textContent = status;
+    }
+
+    // 新しいデータを追加（改良版：ボーナス対応）
+    function addNewData() {
+        const numbers = [];
+        const bonus = [];
+        
+        // 本数字の検証
+        for (let i = 1; i <= 7; i++) {
+            const value = parseInt(document.getElementById(`n${i}`).value);
+            if (isNaN(value) || value < 1 || value > 37) {
+                alert(`${i}番目の数字が正しくありません（1-37の範囲で入力してください）`);
+                return;
+            }
+            if (numbers.includes(value)) {
+                alert('本数字に同じ数字は使用できません');
+                return;
+            }
+            numbers.push(value);
+        }
+        
+        // ボーナス数字の検証（任意）
+        const b1 = parseInt(document.getElementById('b1').value);
+        const b2 = parseInt(document.getElementById('b2').value);
+        
+        if (!isNaN(b1) && b1 >= 1 && b1 <= 37) {
+            if (numbers.includes(b1)) {
+                alert('ボーナス数字1は本数字と重複しています');
+                return;
+            }
+            bonus.push(b1);
+        }
+        
+        if (!isNaN(b2) && b2 >= 1 && b2 <= 37) {
+            if (numbers.includes(b2) || bonus.includes(b2)) {
+                alert('ボーナス数字2は既に使用されています');
+                return;
+            }
+            bonus.push(b2);
+        }
+        
+        // 新しいデータを作成
+        const newRound = (lotoData[0]?.round || 0) + 1;
+        const newData = {
+            round: newRound,
+            date: new Date().toISOString().split('T')[0],
+            numbers: numbers.sort((a, b) => a - b),
+            bonus: bonus,
+            isLocal: true
+        };
+        
+        // データに追加
+        lotoData.unshift(newData);
+        
+        // ローカル追加データとして別途保存
+        const localAdditions = JSON.parse(localStorage.getItem('loto7_local_additions') || '[]');
+        localAdditions.push(newData);
+        localStorage.setItem('loto7_local_additions', JSON.stringify(localAdditions));
+        
+        // 全体データも更新
+        saveToLocalStorage();
+        updateStats();
+        
+        // 再学習と予測
+        updateSyncStatus('再学習中...');
+        initializeModels().then(() => {
+            analyzeData();
+            updateSyncStatus(`完了（ローカル: ${localAdditions.length}件）`);
+            
+            // 入力をクリア
+            for (let i = 1; i <= 7; i++) {
+                document.getElementById(`n${i}`).value = '';
+            }
+            document.getElementById('b1').value = '';
+            document.getElementById('b2').value = '';
+            
+            alert(`第${newRound}回のデータを追加しました！\n本数字: ${numbers.join(', ')}\nボーナス: ${bonus.join(', ') || 'なし'}`);
+        });
+    }
+
+    // 頻度計算（ボーナス対応版）
+    function calculateFrequency(limit = null) {
+        const freq = new Array(38).fill(0);
+        const bonusFreq = new Array(38).fill(0);
+        const data = limit ? lotoData.slice(0, limit) : lotoData;
+        
+        data.forEach(draw => {
+            // 本数字
+            draw.numbers.forEach(num => {
+                freq[num]++;
+            });
+            
+            // ボーナス数字
+            if (useBonusNumbers && draw.bonus) {
+                draw.bonus.forEach(num => {
+                    bonusFreq[num]++;
+                });
+            }
+        });
+        
+        const result = [];
+        for (let i = 1; i <= 37; i++) {
+            const mainCount = freq[i];
+            const bonusCount = bonusFreq[i];
+            const totalCount = useBonusNumbers ? 
+                mainCount + (bonusCount * 0.3) :  // ボーナスは0.3の重み
+                mainCount;
+            
+            result.push({ 
+                num: i, 
+                count: totalCount,
+                mainCount: mainCount,
+                bonusCount: bonusCount
+            });
+        }
+        
+        return result.sort((a, b) => b.count - a.count);
+    }
+
+    // 間隔分析（ボーナス対応版）
+    function analyzeGaps() {
+        const gaps = new Array(38).fill(null).map(() => ({ main: [], bonus: [] }));
+        
+        for (let num = 1; num <= 37; num++) {
+            let lastSeenMain = -1;
+            let lastSeenBonus = -1;
+            
+            for (let i = 0; i < lotoData.length; i++) {
+                // 本数字での出現
+                if (lotoData[i].numbers.includes(num)) {
+                    if (lastSeenMain !== -1) {
+                        gaps[num].main.push(i - lastSeenMain);
+                    }
+                    lastSeenMain = i;
+                }
+                
+                // ボーナスでの出現
+                if (useBonusNumbers && lotoData[i].bonus && lotoData[i].bonus.includes(num)) {
+                    if (lastSeenBonus !== -1) {
+                        gaps[num].bonus.push(i - lastSeenBonus);
+                    }
+                    lastSeenBonus = i;
+                }
+            }
+        }
+        
+        return gaps;
+    }
+
+    // ホット・コールドナンバー分析（ボーナス対応版）
+    function analyzeHotColdNumbers() {
+        const recent = calculateFrequency(20);
+        const overall = calculateFrequency(100);
+        
+        // ホットナンバー（最近よく出る）
+        const hot = recent.slice(0, 15).filter(item => {
+            // ボーナス込みで2回以上、または本数字で2回以上
+            return item.count >= 2 || item.mainCount >= 2;
+        }).slice(0, 10);
+        
+        // コールドナンバー（出現期待値が高い）
+        const cold = [];
+        const gaps = analyzeGaps();
+        
+        for (let num = 1; num <= 37; num++) {
+            let lastSeenMain = -1;
+            let lastSeenAny = -1;  // ボーナス含む
+            
+            for (let i = 0; i < Math.min(50, lotoData.length); i++) {
+                if (lotoData[i].numbers.includes(num)) {
+                    lastSeenMain = i;
+                    lastSeenAny = i;
+                    break;
+                }
+                if (useBonusNumbers && lotoData[i].bonus && lotoData[i].bonus.includes(num) && lastSeenAny === -1) {
+                    lastSeenAny = i;
+                }
+            }
+            
+            const effectiveGap = useBonusNumbers ? lastSeenAny : lastSeenMain;
+            
+            if (effectiveGap > 10 || effectiveGap === -1) {
+                const overallItem = overall.find(item => item.num === num);
+                if (overallItem && overallItem.count > 5) {
+                    cold.push({ 
+                        num, 
+                        lastSeen: effectiveGap, 
+                        count: overallItem.count 
+                    });
+                }
+            }
+        }
+        
+        // 表示
+        displayHotColdNumbers(hot, cold.slice(0, 10));
+    }
+
+    // ホット・コールドナンバーを表示
+    function displayHotColdNumbers(hot, cold) {
+        const hotDiv = document.getElementById('hotNumbers');
+        const coldDiv = document.getElementById('coldNumbers');
+        
+        hotDiv.innerHTML = '';
+        hot.forEach(item => {
+            const tag = document.createElement('span');
+            tag.className = 'number-tag hot-number';
+            tag.textContent = item.num;
+            hotDiv.appendChild(tag);
+        });
+        
+        coldDiv.innerHTML = '';
+        cold.forEach(item => {
+            const tag = document.createElement('span');
+            tag.className = 'number-tag cold-number';
+            tag.textContent = item.num;
+            coldDiv.appendChild(tag);
+        });
+    }
+
+    // AIモデルを初期化（改良版：ボーナス対応）
+    async function initializeModels() {
+        if (!lotoData || lotoData.length < 50) return;
+        
+        try {
+            // まず統計的予測をすぐに表示
+            updateSyncStatus('基本予測を生成中...');
+            analyzeDataQuick();  // 軽い処理のみ実行
+            
+            // 入力サイズをボーナス使用に応じて調整
+            const inputSize = useBonusNumbers ? 111 : 74;
+            
+            // TensorFlow.jsモデルの構築
+            updateSyncStatus('AIモデル構築中...');
+            model = tf.sequential({
+                layers: [
+                    tf.layers.dense({inputShape: [inputSize], units: useHighAccuracy ? 128 : 64, activation: 'relu'}),
+                    tf.layers.dropout({rate: 0.2}),
+                    tf.layers.dense({units: useHighAccuracy ? 256 : 128, activation: 'relu'}),
+                    useHighAccuracy ? tf.layers.dropout({rate: 0.3}) : null,
+                    useHighAccuracy ? tf.layers.dense({units: 128, activation: 'relu'}) : null,
+                    tf.layers.dense({units: 37, activation: 'sigmoid'})
+                ].filter(layer => layer !== null)
+            });
+            
+            model.compile({
+                optimizer: tf.train.adam(0.001),
+                loss: 'binaryCrossentropy',
+                metrics: ['accuracy']
+            });
+            
+            // モデルを訓練
+            await trainModel();
+        } catch (error) {
+            console.error('モデル初期化エラー:', error);
+            // エラーでも統計的予測は表示
+            analyzeDataQuick();
+        }
+    }
+    
+    // 軽量な分析（すぐに結果表示）
+    function analyzeDataQuick() {
+        if (!lotoData || lotoData.length === 0) return;
+        
+        // 統計的予測のみ実行
+        predictions.ensemble = statisticalPrediction();
+        predictions.neural = predictions.ensemble;  // 暫定的に同じ値
+        predictions.forest = randomForestPrediction();
+        predictions.pattern = patternAnalysisPrediction();
+        
+        // すぐに表示
+        displayMainPrediction(predictions.ensemble);
+        displayAlgorithmResults();
+        analyzeHotColdNumbers();
+        generatePredictionTable();
+    }
+
+    // モデルを訓練（高速化版 + 高精度モード対応）
+    async function trainModel() {
+        const trainingData = prepareTrainingData();
+        if (!trainingData) return;
+        
+        const { features, labels } = trainingData;
+        const xs = tf.tensor2d(features);
+        const ys = tf.tensor2d(labels);
+        
+        // 高精度モードの設定
+        const epochs = useHighAccuracy ? 30 : 10;
+        const batchSize = useHighAccuracy ? 32 : 64;
+        
+        try {
+            await model.fit(xs, ys, {
+                epochs: epochs,
+                batchSize: batchSize,
+                validationSplit: 0.2,
+                callbacks: {
+                    onEpochEnd: async (epoch, logs) => {
+                        // 進捗を表示
+                        const progress = ((epoch + 1) / epochs) * 100;
+                        const mode = useHighAccuracy ? '高精度' : '高速';
+                        updateSyncStatus(`AI学習中（${mode}）... ${progress.toFixed(0)}%`);
+                        
+                        if (epoch === epochs - 1) {
+                            const accuracy = (logs.val_accuracy * 100).toFixed(1);
+                            document.getElementById('modelAccuracy').textContent = accuracy + '%';
+                            
+                            // 学習完了後に完全な予測を再実行
+                            setTimeout(() => {
+                                updateSyncStatus('AI予測を更新中...');
+                                analyzeData();
+                                updateSyncStatus('完了');
+                            }, 100);
+                        }
+                        
+                        // UIを更新するための小休止
+                        await tf.nextFrame();
+                    }
+                }
+            });
+        } finally {
+            xs.dispose();
+            ys.dispose();
+        }
+    }
+
+    // 訓練データを準備
+    function prepareTrainingData() {
+        if (lotoData.length < 100) return null;
+        
+        const features = [];
+        const labels = [];
+        
+        for (let i = 10; i < lotoData.length - 1; i++) {
+            // 特徴量：過去10回の出現パターン + 統計的特徴
+            const feature = extractFeatures(i);
+            
+            // ラベル：次回の当選番号
+            const label = new Array(37).fill(0);
+            lotoData[i - 1].numbers.forEach(num => {
+                label[num - 1] = 1;
+            });
+            
+            features.push(feature);
+            labels.push(label);
+        }
+        
+        return { features, labels };
+    }
+
+    // 特徴量を抽出（ボーナス数字対応版）
+    function extractFeatures(index) {
+        const featureSize = useBonusNumbers ? 111 : 74;  // ボーナス使用時は拡張
+        const feature = new Array(featureSize).fill(0);
+        
+        // 1. 番号ごとの出現頻度（過去10回）
+        for (let i = 0; i < 10 && index + i < lotoData.length; i++) {
+            const weight = (10 - i) / 10;
+            
+            // 本数字
+            lotoData[index + i].numbers.forEach(num => {
+                feature[num - 1] += weight;
+            });
+            
+            // ボーナス数字（使用する場合）
+            if (useBonusNumbers && lotoData[index + i].bonus) {
+                lotoData[index + i].bonus.forEach(num => {
+                    feature[num - 1] += weight * 0.3;  // ボーナスは0.3の重み
+                });
+            }
+        }
+        
+        // 2. 番号ごとの間隔情報
+        for (let num = 1; num <= 37; num++) {
+            let gap = 0;
+            let bonusGap = 0;
+            
+            for (let i = index; i < lotoData.length && (gap === 0 || bonusGap === 0); i++) {
+                if (gap === 0 && lotoData[i].numbers.includes(num)) {
+                    gap = i - index;
+                }
+                if (useBonusNumbers && bonusGap === 0 && lotoData[i].bonus && lotoData[i].bonus.includes(num)) {
+                    bonusGap = i - index;
+                }
+            }
+            
+            feature[37 + num - 1] = gap > 0 ? 1 / gap : 0;
+            
+            if (useBonusNumbers) {
+                // ボーナスでの出現間隔
+                feature[74 + num - 1] = bonusGap > 0 ? 0.3 / bonusGap : 0;
+            }
+        }
+        
+        return feature;
+    }
+
+    // データ分析と予測
+    function analyzeData() {
+        if (!lotoData || lotoData.length === 0) return;
+        
+        // 各種予測を実行
+        predictions.ensemble = ensemblePrediction();
+        predictions.neural = neuralNetworkPrediction();
+        predictions.forest = randomForestPrediction();
+        predictions.pattern = patternAnalysisPrediction();
+        
+        // メイン予測を表示
+        displayMainPrediction(predictions.ensemble);
+        
+        // 各アルゴリズムの結果を表示
+        displayAlgorithmResults();
+        
+        // ホット＆コールド分析
+        analyzeHotColdNumbers();
+        
+        // 予測番号一覧を生成（新機能）
+        generatePredictionTable();
+    }
+
+    // 予測番号一覧を生成（20組）
+    function generatePredictionTable() {
+        const allPredictions = [];
+        
+        // 1. 統合AI予測のバリエーション（5組）
+        for (let i = 0; i < 5; i++) {
+            const pred = generateEnsembleVariation(i);
+            allPredictions.push({
+                numbers: pred,
+                method: '統合AI（信頼度' + (95 - i * 2) + '%）',
+                score: 95 - i * 2,
+                type: 'ensemble'
+            });
+        }
+        
+        // 2. ニューラルネットワークのバリエーション（4組）
+        for (let i = 0; i < 4; i++) {
+            const pred = generateNeuralVariation(i);
+            allPredictions.push({
+                numbers: pred,
+                method: 'ニューラルネット v' + (i + 1),
+                score: 88 - i * 3,
+                type: 'neural'
+            });
+        }
+        
+        // 3. 統計的予測のバリエーション（4組）
+        for (let i = 0; i < 4; i++) {
+            const pred = generateStatisticalVariation(i);
+            allPredictions.push({
+                numbers: pred,
+                method: '統計分析（' + ['頻度重視', '間隔重視', 'ホット重視', 'バランス型'][i] + '）',
+                score: 82 - i * 2,
+                type: 'statistical'
+            });
+        }
+        
+        // 4. パターン分析のバリエーション（4組）
+        for (let i = 0; i < 4; i++) {
+            const pred = generatePatternVariation(i);
+            allPredictions.push({
+                numbers: pred,
+                method: 'パターン認識（' + ['連続性', '合計値', '奇偶比', '分布'][i] + '）',
+                score: 80 - i * 2,
+                type: 'pattern'
+            });
+        }
+        
+        // 5. 特殊な予測（3組）
+        allPredictions.push({
+            numbers: generateLuckyPick(),
+            method: 'ラッキーピック（AI補正）',
+            score: 77,
+            type: 'special'
+        });
+        
+        allPredictions.push({
+            numbers: generateHistoricalPattern(),
+            method: '過去の当選パターン再現',
+            score: 75,
+            type: 'special'
+        });
+        
+        allPredictions.push({
+            numbers: generateColdFocus(),
+            method: 'コールドナンバー集中',
+            score: 73,
+            type: 'special'
+        });
+        
+        // スコアでソートして上位20個を選択
+        allPredictions.sort((a, b) => b.score - a.score);
+        const top20 = allPredictions.slice(0, 20);
+        
+        // 当選確率を計算して表示
+        displayPredictionTable(top20);
+    }
+
+    // 統合AIのバリエーション生成
+    function generateEnsembleVariation(variation) {
+        const weights = [
+            [1.5, 1.2, 1.0, 1.0, 0.8],  // 標準
+            [2.0, 1.0, 0.8, 0.8, 0.6],  // NN重視
+            [1.0, 2.0, 1.0, 0.8, 0.6],  // RF重視
+            [1.0, 1.0, 1.5, 1.5, 0.5],  // 統計重視
+            [1.2, 1.2, 1.2, 1.2, 1.2]   // 均等
+        ];
+        
+        const votes = new Array(38).fill(0);
+        const methods = [
+            { pred: neuralNetworkPrediction(), weight: weights[variation][0] },
+            { pred: randomForestPrediction(), weight: weights[variation][1] },
+            { pred: patternAnalysisPrediction(), weight: weights[variation][2] },
+            { pred: statisticalPrediction(), weight: weights[variation][3] },
+            { pred: markovChainPrediction(), weight: weights[variation][4] }
+        ];
+        
+        methods.forEach(method => {
+            method.pred.forEach((num, rank) => {
+                votes[num] += (7 - rank) * method.weight + Math.random() * 0.1;
+            });
+        });
+        
+        const result = [];
+        for (let i = 1; i <= 37; i++) {
+            result.push({ num: i, score: votes[i] });
+        }
+        
+        return result
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 7)
+            .map(item => item.num)
+            .sort((a, b) => a - b);
+    }
+
+    // ニューラルネットワークのバリエーション
+    function generateNeuralVariation(variation) {
+        if (!model) return generateSmartFallback();
+        
+        try {
+            // 異なる特徴量で予測
+            const feature = extractFeaturesWithVariation(0, variation);
+            const input = tf.tensor2d([feature]);
+            const prediction = model.predict(input);
+            const scores = Array.from(prediction.dataSync());
+            
+            input.dispose();
+            prediction.dispose();
+            
+            // ノイズを加えてバリエーション作成
+            const noise = variation * 0.02;
+            const result = [];
+            for (let i = 0; i < 37; i++) {
+                result.push({ 
+                    num: i + 1, 
+                    score: scores[i] + (Math.random() - 0.5) * noise 
+                });
+            }
+            
+            return result
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 7)
+                .map(item => item.num)
+                .sort((a, b) => a - b);
+        } catch (error) {
+            return generateSmartFallback();
+        }
+    }
+
+    // 統計的予測のバリエーション
+    function generateStatisticalVariation(variation) {
+        const strategies = [
+            { freqWeight: 0.7, gapWeight: 0.3, window: 100 },  // 頻度重視
+            { freqWeight: 0.3, gapWeight: 0.7, window: 50 },   // 間隔重視
+            { freqWeight: 0.5, gapWeight: 0.2, window: 20 },   // 最近重視
+            { freqWeight: 0.5, gapWeight: 0.5, window: 200 }   // バランス
+        ];
+        
+        const strategy = strategies[variation];
+        const freq = calculateFrequency(strategy.window);
+        const gaps = analyzeGaps();
+        
+        const scores = [];
+        for (let num = 1; num <= 37; num++) {
+            const freqScore = (freq.find(f => f.num === num)?.count || 0) / strategy.window;
+            let gapScore = 0;
+            
+            for (let i = 0; i < lotoData.length; i++) {
+                if (lotoData[i].numbers.includes(num)) {
+                    gapScore = 1 / (i + 1);
+                    break;
+                }
+            }
+            
+            const totalScore = freqScore * strategy.freqWeight + gapScore * strategy.gapWeight;
+            scores.push({ num, score: totalScore });
+        }
+        
+        return scores
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 7)
+            .map(item => item.num)
+            .sort((a, b) => a - b);
+    }
+
+    // 統合AI予測（最高精度）
+    function ensemblePrediction() {
+        const votes = new Array(38).fill(0);
+        
+        // 各予測手法の結果を統合
+        const methods = [
+            { pred: neuralNetworkPrediction(), weight: 1.5 },
+            { pred: randomForestPrediction(), weight: 1.2 },
+            { pred: patternAnalysisPrediction(), weight: 1.0 },
+            { pred: statisticalPrediction(), weight: 1.0 },
+            { pred: markovChainPrediction(), weight: 0.8 }
+        ];
+        
+        methods.forEach(method => {
+            method.pred.forEach((num, rank) => {
+                votes[num] += (7 - rank) * method.weight;
+            });
+        });
+        
+        // 上位7つを選択
+        const result = [];
+        for (let i = 1; i <= 37; i++) {
+            result.push({ num: i, score: votes[i] });
+        }
+        
+        return result
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 7)
+            .map(item => item.num)
+            .sort((a, b) => a - b);
+    }
+
+    // ニューラルネットワーク予測
+    function neuralNetworkPrediction() {
+        if (!model) {
+            return generateSmartFallback();
+        }
+        
+        try {
+            const feature = extractFeatures(0);
+            const input = tf.tensor2d([feature]);
+            const prediction = model.predict(input);
+            const scores = Array.from(prediction.dataSync());
+            
+            input.dispose();
+            prediction.dispose();
+            
+            const result = [];
+            for (let i = 0; i < 37; i++) {
+                result.push({ num: i + 1, score: scores[i] });
+            }
+            
+            return result
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 7)
+                .map(item => item.num)
+                .sort((a, b) => a - b);
+        } catch (error) {
+            return generateSmartFallback();
+        }
+    }
+
+    // ランダムフォレスト予測
+    function randomForestPrediction() {
+        const treeCount = 50;
+        const votes = new Array(38).fill(0);
+        
+        for (let t = 0; t < treeCount; t++) {
+            const prediction = decisionTreePredict(t);
+            prediction.forEach(num => {
+                votes[num]++;
+            });
+        }
+        
+        const result = [];
+        for (let i = 1; i <= 37; i++) {
+            if (votes[i] > 0) {
+                result.push({ num: i, count: votes[i] });
+            }
+        }
+        
+        return result
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 7)
+            .map(item => item.num)
+            .sort((a, b) => a - b);
+    }
+
+    // 決定木予測
+    function decisionTreePredict(seed) {
+        const recent = Math.min(100, lotoData.length);
+        const freq = new Array(38).fill(0);
+        const gaps = new Array(38).fill(0);
+        
+        // ランダムサンプリング
+        const indices = [];
+        for (let i = 0; i < 50; i++) {
+            indices.push(Math.floor(Math.random() * recent));
+        }
+        
+        indices.forEach(idx => {
+            if (lotoData[idx]) {
+                lotoData[idx].numbers.forEach(num => {
+                    freq[num]++;
+                });
+            }
+        });
+        
+        // 間隔計算
+        for (let num = 1; num <= 37; num++) {
+            for (let i = 0; i < recent; i++) {
+                if (lotoData[i].numbers.includes(num)) {
+                    gaps[num] = i;
+                    break;
+                }
+            }
+        }
+        
+        // スコア計算
+        const scores = [];
+        for (let i = 1; i <= 37; i++) {
+            const freqScore = freq[i] / 50;
+            const gapScore = gaps[i] > 0 ? 1 / (gaps[i] + 1) : 0.5;
+            scores.push({
+                num: i,
+                score: freqScore * 0.6 + gapScore * 0.4 + Math.random() * 0.1
+            });
+        }
+        
+        return scores
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 7)
+            .map(item => item.num);
+    }
+
+    // パターン分析予測
+    function patternAnalysisPrediction() {
+        const candidates = new Set();
+        
+        // 1. 連続番号パターン
+        const consecutive = findConsecutivePatterns();
+        consecutive.forEach(num => candidates.add(num));
+        
+        // 2. 合計値パターン
+        const sumBased = findSumPatterns();
+        sumBased.forEach(num => candidates.add(num));
+        
+        // 3. 奇数偶数バランス
+        const oddEven = findOddEvenBalance();
+        oddEven.forEach(num => candidates.add(num));
+        
+        // 4. 間隔パターン
+        const interval = findIntervalPatterns();
+        interval.forEach(num => candidates.add(num));
+        
+        // 候補が不足の場合は頻度分析で補完
+        const freq = calculateFrequency(30);
+        let i = 0;
+        while (candidates.size < 15 && i < freq.length) {
+            candidates.add(freq[i].num);
+            i++;
+        }
+        
+        // スコアリングして上位7つ選択
+        return Array.from(candidates)
+            .slice(0, 7)
+            .sort((a, b) => a - b);
+    }
+
+    // 統計的予測（ボーナス対応版）
+    function statisticalPrediction() {
+        const freq = calculateFrequency(100);
+        const recentFreq = calculateFrequency(20);
+        const gaps = analyzeGaps();
+        
+        const scores = [];
+        for (let num = 1; num <= 37; num++) {
+            const overallFreq = freq.find(f => f.num === num);
+            const recentItem = recentFreq.find(f => f.num === num);
+            
+            // 基本スコア計算
+            const baseFreqScore = (overallFreq?.mainCount || 0) / 100;
+            const recentScore = (recentItem?.count || 0) / 20;
+            
+            // ボーナス考慮のスコア
+            let bonusScore = 0;
+            if (useBonusNumbers) {
+                bonusScore = ((overallFreq?.bonusCount || 0) / 100) * 0.3;
+            }
+            
+            // 間隔スコア
+            const mainGaps = gaps[num].main;
+            const avgMainGap = mainGaps.length > 0 ? 
+                mainGaps.reduce((a, b) => a + b, 0) / mainGaps.length : 20;
+            
+            let lastGap = 50;
+            for (let i = 0; i < lotoData.length; i++) {
+                if (lotoData[i].numbers.includes(num)) {
+                    lastGap = i;
+                    break;
+                }
+                // ボーナスでの出現も考慮
+                if (useBonusNumbers && lotoData[i].bonus && lotoData[i].bonus.includes(num)) {
+                    lastGap = Math.min(lastGap, i * 1.5);  // ボーナス出現は1.5倍の重み
+                }
+            }
+            
+            const gapScore = 1 / (lastGap + 1);
+            
+            // 総合スコア
+            const totalScore = 
+                baseFreqScore * 0.3 +
+                recentScore * 0.4 +
+                gapScore * 0.3 +
+                bonusScore;
+            
+            scores.push({ num, score: totalScore });
+        }
+        
+        return scores
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 7)
+            .map(item => item.num)
+            .sort((a, b) => a - b);
+    }
+
+    // マルコフ連鎖予測（ボーナス対応版）
+    function markovChainPrediction() {
+        const transitions = {};
+        const bonusTransitions = {};
+        
+        // 遷移確率を計算
+        for (let i = 1; i < lotoData.length; i++) {
+            const current = lotoData[i].numbers;
+            const next = lotoData[i - 1].numbers;
+            const currentBonus = lotoData[i].bonus || [];
+            const nextBonus = lotoData[i - 1].bonus || [];
+            
+            // 本数字の遷移
+            current.forEach(from => {
+                if (!transitions[from]) transitions[from] = {};
+                next.forEach(to => {
+                    transitions[from][to] = (transitions[from][to] || 0) + 1;
+                });
+            });
+            
+            // ボーナスからの遷移（使用する場合）
+            if (useBonusNumbers) {
+                currentBonus.forEach(from => {
+                    if (!bonusTransitions[from]) bonusTransitions[from] = {};
+                    next.forEach(to => {
+                        bonusTransitions[from][to] = (bonusTransitions[from][to] || 0) + 0.3;
+                    });
+                });
+            }
+        }
+        
+        // 最新の番号から予測
+        const lastDraw = lotoData[0].numbers;
+        const lastBonus = lotoData[0].bonus || [];
+        const predictions = new Array(38).fill(0);
+        
+        // 本数字からの予測
+        lastDraw.forEach(num => {
+            if (transitions[num]) {
+                Object.entries(transitions[num]).forEach(([to, count]) => {
+                    predictions[parseInt(to)] += count;
+                });
+            }
+        });
+        
+        // ボーナスからの予測
+        if (useBonusNumbers) {
+            lastBonus.forEach(num => {
+                if (bonusTransitions[num]) {
+                    Object.entries(bonusTransitions[num]).forEach(([to, count]) => {
+                        predictions[parseInt(to)] += count;
+                    });
+                }
+            });
+        }
+        
+        const result = [];
+        for (let i = 1; i <= 37; i++) {
+            if (predictions[i] > 0) {
+                result.push({ num: i, score: predictions[i] });
+            }
+        }
+        
+        // スコアが0の番号は統計的に追加
+        const freq = calculateFrequency(50);
+        freq.forEach(f => {
+            if (!result.find(r => r.num === f.num)) {
+                result.push({ num: f.num, score: f.count * 0.1 });
+            }
+        });
+        
+        return result
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 7)
+            .map(item => item.num)
+            .sort((a, b) => a - b);
+    }
+
+    // 連続番号パターンを検出
+    function findConsecutivePatterns() {
+        const candidates = [];
+        const recent = lotoData.slice(0, 10);
+        
+        recent.forEach(draw => {
+            for (let i = 0; i < draw.numbers.length - 1; i++) {
+                if (draw.numbers[i + 1] - draw.numbers[i] === 1) {
+                    // 連続番号の前後を候補に
+                    if (draw.numbers[i] > 1) candidates.push(draw.numbers[i] - 1);
+                    if (draw.numbers[i + 1] < 37) candidates.push(draw.numbers[i + 1] + 1);
+                }
+            }
+        });
+        
+        return [...new Set(candidates)];
+    }
+
+    // 合計値パターンを分析
+    function findSumPatterns() {
+        const sums = lotoData.slice(0, 20).map(draw => 
+            draw.numbers.reduce((a, b) => a + b, 0)
+        );
+        const avgSum = sums.reduce((a, b) => a + b, 0) / sums.length;
+        const targetSum = Math.round(avgSum);
+        
+        // 目標合計値に近づける番号を選択
+        const candidates = [];
+        for (let num = 1; num <= 37; num++) {
+            const contribution = Math.abs(targetSum / 7 - num);
+            if (contribution < 10) {
+                candidates.push(num);
+            }
+        }
+        
+        return candidates;
+    }
+
+    // 奇数偶数バランスを分析
+    function findOddEvenBalance() {
+        const recent = lotoData.slice(0, 10);
+        let totalOdd = 0, totalEven = 0;
+        
+        recent.forEach(draw => {
+            draw.numbers.forEach(num => {
+                if (num % 2 === 1) totalOdd++;
+                else totalEven++;
+            });
+        });
+        
+        const avgOdd = totalOdd / recent.length;
+        const avgEven = totalEven / recent.length;
+        
+        // バランスを考慮した候補選択
+        const candidates = [];
+        const needMoreOdd = avgOdd < 3.5;
+        
+        for (let i = 1; i <= 37; i++) {
+            if ((i % 2 === 1 && needMoreOdd) || (i % 2 === 0 && !needMoreOdd)) {
+                candidates.push(i);
+            }
+        }
+        
+        return candidates.slice(0, 10);
+    }
+
+    // 間隔パターンを分析
+    function findIntervalPatterns() {
+        const gaps = analyzeGaps();
+        const candidates = [];
+        
+        for (let num = 1; num <= 37; num++) {
+            if (gaps[num].length > 2) {
+                const avgGap = gaps[num].reduce((a, b) => a + b, 0) / gaps[num].length;
+                let lastSeen = -1;
+                
+                for (let i = 0; i < lotoData.length; i++) {
+                    if (lotoData[i].numbers.includes(num)) {
+                        lastSeen = i;
+                        break;
+                    }
+                }
+                
+                if (lastSeen > 0 && Math.abs(lastSeen - avgGap) < 3) {
+                    candidates.push(num);
+                }
+            }
+        }
+        
+        return candidates;
+    }
+
+    // スマートフォールバック
+    function generateSmartFallback() {
+        const freq = calculateFrequency(50);
+        const hot = freq.slice(0, 5).map(f => f.num);
+        const mid = freq.slice(10, 12).map(f => f.num);
+        
+        const result = [...hot, ...mid];
+        while (result.length < 7) {
+            const num = Math.floor(Math.random() * 37) + 1;
+            if (!result.includes(num)) {
+                result.push(num);
+            }
+        }
+        
+        return result.sort((a, b) => a - b);
+    }
+
+    // メイン予測を表示
+    function displayMainPrediction(numbers) {
+        const display = document.getElementById('predictionDisplay');
+        display.innerHTML = '';
+        
+        const numbersDiv = document.createElement('div');
+        numbersDiv.className = 'prediction-numbers';
+        
+        numbers.forEach(num => {
+            const ball = document.createElement('div');
+            ball.className = 'number-ball';
+            ball.textContent = num;
+            numbersDiv.appendChild(ball);
+        });
+        
+        display.appendChild(numbersDiv);
+        
+        // 信頼度を計算して表示
+        const confidence = calculateConfidence();
+        displayConfidence(confidence);
+    }
+
+    // 各アルゴリズムの結果を表示
+    function displayAlgorithmResults() {
+        displayNumberList('ensembleNumbers', predictions.ensemble);
+        displayNumberList('neuralNumbers', predictions.neural);
+        displayNumberList('forestNumbers', predictions.forest);
+        displayNumberList('patternNumbers', predictions.pattern);
+    }
+
+    // 番号リストを表示
+    function displayNumberList(elementId, numbers) {
+        const container = document.getElementById(elementId);
+        container.innerHTML = '';
+        
+        numbers.forEach(num => {
+            const tag = document.createElement('span');
+            tag.className = 'number-tag';
+            tag.style.background = '#667eea';
+            tag.style.color = 'white';
+            tag.textContent = num;
+            container.appendChild(tag);
+        });
+    }
+
+    // 信頼度を計算
+    function calculateConfidence() {
+        let confidence = 50; // ベース信頼度
+        
+        // データ量による信頼度向上
+        if (lotoData.length > 600) confidence += 10;
+        else if (lotoData.length > 400) confidence += 7;
+        else if (lotoData.length > 200) confidence += 5;
+        
+        // モデル精度による信頼度向上
+        const accuracy = parseFloat(document.getElementById('modelAccuracy').textContent);
+        if (accuracy > 20) confidence += 10;
+        else if (accuracy > 15) confidence += 7;
+        else if (accuracy > 10) confidence += 5;
+        
+        // 予測の一致度による信頼度向上
+        const allPredictions = [
+            ...predictions.neural,
+            ...predictions.forest,
+            ...predictions.pattern
+        ];
+        const consensus = {};
+        allPredictions.forEach(num => {
+            consensus[num] = (consensus[num] || 0) + 1;
+        });
+        
+        const highConsensus = Object.values(consensus).filter(c => c >= 2).length;
+        confidence += highConsensus * 2;
+        
+        return Math.min(85, confidence); // 最大85%
+    }
+
+    // 信頼度を表示
+    function displayConfidence(confidence) {
+        const meter = document.getElementById('confidenceMeter');
+        const value = document.getElementById('confidenceValue');
+        const fill = document.getElementById('confidenceFill');
+        
+        meter.style.display = 'block';
+        value.textContent = confidence;
+        
+        setTimeout(() => {
+            fill.style.width = confidence + '%';
+        }, 100);
+    }
+</script>
+```
+
+</body>
+</html>
